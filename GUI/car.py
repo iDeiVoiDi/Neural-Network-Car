@@ -10,7 +10,7 @@ class Car:
     '''
     Objeto → Coche | Carga imagen de su objeto y movimiento 
     '''
-    def __init__(self, x, y,angle=0, image_path=None, width=None, height=None):
+    def __init__(self, x, y, angle=0, image_path=None, width=None, height=None):
         config = load_config()
 
         # == Parametros Bases ==

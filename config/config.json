@@ -9,6 +9,8 @@
     "CAR_ACELERATION": 25.0,
     "CAR_FRICTION": 15.0,
     "CAR_TURN_RATE": 200.0,
-    "CAR_WIDTH": 80,
-    "CAR_HEIGHT": 42
+    "CAR_WIDTH": 50,
+    "CAR_HEIGHT": 28,
+
+    "DISTANT_SENSOR": 200
 }

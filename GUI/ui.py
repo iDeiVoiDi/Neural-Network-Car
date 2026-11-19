@@ -7,6 +7,7 @@ import pygame
 from config.config import load_config
 from GUI.car import Car
 from GUI.sensors import Sensor
+from GUI.map_loader import load_walls
 
 class Game:
     '''
@@ -30,19 +31,23 @@ class Game:
         ''''
         Corre la imagen principal del juego
         '''
-        image_path = Path(__file__).resolve().parent.parent / "assets" / "car.png"
         config = load_config()
         ppu = 32
+
+        # == Cargamos las imagenes ==
+        image_path = Path(__file__).resolve().parent.parent / "assets" / "car.png"
+        map_path = Path(__file__).resolve().parent.parent / "assets" / "map.png"
+        size = (config["SCREEN_WIDTH"], config["SCREEN_HEIGHT"])
 
         # == Creacion del Objeto Coche ==
         car = Car(x=config["SCREEN_CAR_INIT_X"], 
                   y=config["SCREEN_CAR_INIT_Y"], 
                   image_path=image_path)
 
-        #! == Mapa provisional (negro = carretera, rojo = pared) ==
-        map_surface = pygame.Surface(self.screen.get_size())
-        map_surface.fill((0, 0, 0))
-        pygame.draw.rect(map_surface, (255, 0, 0), (800, 0, 480, 720))
+        # == Cargamos el mapa ==
+        walls = load_walls(map_path, size)
+        map_surface = pygame.transform.scale(
+            pygame.image.load(map_path).convert(), size)
 
         # == Sensores: 7 rayos en abanico ==
         sensors = [Sensor(offset) for offset in (-90, -60, -30, 0, 30, 60, 90)]
@@ -73,7 +78,7 @@ class Game:
             # == Medicion de sensores ==
             car_px = car.position * ppu
             for s in sensors:
-                s.measure(map_surface, car_px.x, car_px.y, car.angle)
+                s.measure(walls, car_px.x, car_px.y, car.angle)
 
             # == Dibujado en pantalla ==
             self.screen.blit(map_surface, (0, 0))

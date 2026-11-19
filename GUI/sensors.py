@@ -21,7 +21,7 @@ class Sensor:
         self.start = (0, 0)
         self.end = (0, 0)
 
-    def measure(self, map_surface, x, y, car_angle):
+    def measure(self, walls, x, y, car_angle):
         '''
         Lanza el rayo y guarda la distancia (en pixeles)
         '''
@@ -29,7 +29,7 @@ class Sensor:
         angle = math.radians(car_angle + self.offset)
         dx = math.cos(angle)
         dy = -math.sin(angle)
-        width, height = map_surface.get_size()
+        height, width = walls.shape
         self.distance = self.max_distance
         self.hit = False
 
@@ -38,13 +38,7 @@ class Sensor:
         for d in range(self.max_distance):
             px = int(x + dx * d)
             py = int(y + dy * d)
-            # == Toca un borde ==
-            if px < 0 or px >= width or py < 0 or py >= height:
-                self.distance = d
-                self.hit = True
-                break
-            # == Toca algo q no es negro (Pared) ==
-            if map_surface.get_at((px, py))[:3] != (0, 0, 0):
+            if px < 0 or px >= width or py < 0 or py >= height or walls[py, px]:
                 self.distance = d
                 self.hit = True
                 break
@@ -54,4 +48,15 @@ class Sensor:
         return self.distance
 
     def draw(self, surface):
-        pygame.draw.line(surface, (0, 255, 0), self.start, self.end, 2)
+        # == Las partes q chocan ==
+        # Tienen el color contrario a la pared
+        if self.hit:
+            color = (255, 0, 0)
+        # == Las partes q no chocan ==
+        else:
+            color = (0, 255, 0)
+
+        pygame.draw.line(surface, color, self.start, self.end, 2)
+
+        if self.hit:
+            pygame.draw.circle(surface, color, (int(self.end[0]), int(self.end[1])), 4)

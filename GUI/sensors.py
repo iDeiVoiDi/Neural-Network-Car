@@ -49,7 +49,6 @@ class Sensor:
 
     def draw(self, surface):
         # == Las partes q chocan ==
-        # Tienen el color contrario a la pared
         if self.hit:
             color = (255, 0, 0)
         # == Las partes q no chocan ==

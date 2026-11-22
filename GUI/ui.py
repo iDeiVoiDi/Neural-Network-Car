@@ -6,8 +6,10 @@ import pygame
 
 from config.config import load_config
 from GUI.car import Car
-from GUI.sensors import Sensor
 from GUI.map_loader import load_walls
+from AI.brain import Brain
+from AI.population import evolve
+
 
 class Game:
     '''
@@ -28,65 +30,92 @@ class Game:
 
 
     def run(self):
-        ''''
-        Corre la imagen principal del juego
+        '''
+        Corre la simulacion: poblacion de coches evolucionando
         '''
         config = load_config()
         ppu = 32
 
-        # == Cargamos las imagenes ==
+        # == Parametros del entrenamiento ==
+        POP = 50
+        DT = 1 / 60
+        MAX_FRAMES = 60 * 20          # una generacion dura como mucho 20 s
+        steps_per_frame = 1           # velocidad de simulacion (flechas arriba/abajo)
+        draw_enabled = True           # tecla D para apagar/encender el dibujo
+        x0, y0 = config["SCREEN_CAR_INIT_X"], config["SCREEN_CAR_INIT_Y"]
+        car_angle = config["CAR_INIT_ANGLE"]
+
+        # == Cargamos imagenes y mapa ==
         image_path = Path(__file__).resolve().parent.parent / "assets" / "car.png"
         map_path = Path(__file__).resolve().parent.parent / "assets" / "map.png"
         size = (config["SCREEN_WIDTH"], config["SCREEN_HEIGHT"])
 
-        # == Creacion del Objeto Coche ==
-        car = Car(x=config["SCREEN_CAR_INIT_X"], 
-                  y=config["SCREEN_CAR_INIT_Y"], 
-                  image_path=image_path)
-
-        # == Cargamos el mapa ==
         walls = load_walls(map_path, size)
         map_surface = pygame.transform.scale(
             pygame.image.load(map_path).convert(), size)
 
-        # == Sensores: 7 rayos en abanico ==
-        sensors = [Sensor(offset) for offset in (-90, -60, -30, 0, 30, 60, 90)]
+        # == Poblacion inicial (coches creados UNA vez, luego se reutilizan) ==
+        cars = [Car(x0, y0, angle=car_angle, image_path=image_path) for _ in range(POP)]
+        for car in cars:
+            car.reset(x0, y0, car_angle, Brain())
 
-        # == Bucle Principal | (Imagen) ==
+        generation, frames = 1, 0
+        best_ever = 0.0
+        font = pygame.font.SysFont(None, 24)
+
+        # == Bucle Principal ==
         while not self.exit:
-            dt = self.clock.get_time() / 1000.0
-
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.exit = True
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_UP:
+                        steps_per_frame = min(steps_per_frame + 1, 30)
+                    elif event.key == pygame.K_DOWN:
+                        steps_per_frame = max(steps_per_frame - 1, 1)
+                    elif event.key == pygame.K_d:
+                        draw_enabled = not draw_enabled
 
-            pressed = pygame.key.get_pressed()
+            # == Simulacion (uno o varios pasos por fotograma) ==
+            for _ in range(steps_per_frame):
+                for car in cars:
+                    car.think_and_move(DT, walls, ppu)
+                frames += 1
 
-            # == Teclas ==
-            accelerate = pressed[pygame.K_UP]
-            reverse = pressed[pygame.K_DOWN]
-            
-            turn_dir = 0
-            if pressed[pygame.K_LEFT]:
-                turn_dir += 1
-            if pressed[pygame.K_RIGHT]:
-                turn_dir -= 1
+                # == Fin de generacion: todos muertos o se acabo el tiempo ==
+                if frames >= MAX_FRAMES or not any(c.alive for c in cars):
+                    best = max(cars, key=lambda c: c.fitness)
+                    print(f"Gen {generation}: mejor = {best.fitness:.1f}")
 
-            # == Actualizacion del Coche ==
-            car.update(dt, accelerate, reverse, turn_dir)
-            
-            # == Medicion de sensores ==
-            car_px = car.position * ppu
-            for s in sensors:
-                s.measure(walls, car_px.x, car_px.y, car.angle)
+                    if best.fitness > best_ever:
+                        best_ever = best.fitness
+                        best.brain.save("best_brain.npz")
 
-            # == Dibujado en pantalla ==
-            self.screen.blit(map_surface, (0, 0))
-            for s in sensors:
-                s.draw(self.screen)
-            car.draw(self.screen, ppu)
-            pygame.display.flip()
+                    new_brains = evolve([c.brain for c in cars],
+                                        [c.fitness for c in cars])
+                    for car, brain in zip(cars, new_brains):
+                        car.reset(x0, y0, car_angle, brain)
+                    generation += 1
+                    frames = 0
 
-            self.clock.tick(self.ticks)
+            alive = [c for c in cars if c.alive]
+            pygame.display.set_caption(
+                f"Gen {generation} | vivos {len(alive)} | x{steps_per_frame}")
+
+            # == Dibujado ==
+            if draw_enabled:
+                self.screen.blit(map_surface, (0, 0))
+                if alive:
+                    leader = max(alive, key=lambda c: c.fitness)
+                    for s in leader.sensors:      # sensores solo del mejor
+                        s.draw(self.screen)
+                    for car in alive:
+                        car.draw(self.screen, ppu)
+                hud = font.render(
+                    f"Gen {generation}  vivos {len(alive)}  mejor historico {best_ever:.0f}",
+                    True, (255, 255, 255))
+                self.screen.blit(hud, (10, 10))
+                pygame.display.flip()
+                self.clock.tick(self.ticks)
 
         pygame.quit()

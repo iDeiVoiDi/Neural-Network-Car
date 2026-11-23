@@ -5,8 +5,10 @@ from pathlib import Path
 import pygame
 
 from config.config import load_config
+
 from GUI.car import Car
 from GUI.map_loader import load_walls
+
 from AI.brain import Brain
 from AI.population import evolve
 
@@ -20,9 +22,11 @@ class Game:
 
         # == Parametros base ==
         pygame.init()
+
         pygame.display.set_caption(config["NAME"])
         width = config["SCREEN_WIDTH"]
         height = config["SCREEN_HEIGHT"]
+
         self.screen = pygame.display.set_mode((width, height))
         self.clock = pygame.time.Clock()
         self.ticks = 60
@@ -37,11 +41,13 @@ class Game:
         ppu = 32
 
         # == Parametros del entrenamiento ==
-        POP = 50
+        POP = config["CAR_POPULATION"]
         DT = 1 / 60
-        MAX_FRAMES = 60 * 20          # una generacion dura como mucho 20 s
-        steps_per_frame = 1           # velocidad de simulacion (flechas arriba/abajo)
-        draw_enabled = True           # tecla D para apagar/encender el dibujo
+        MAX_FRAMES = 60 * config["CAR_TIME_LIMIT"]
+        
+        steps_per_frame = 1
+        draw_enabled = True
+        
         x0, y0 = config["SCREEN_CAR_INIT_X"], config["SCREEN_CAR_INIT_Y"]
         car_angle = config["CAR_INIT_ANGLE"]
 
@@ -54,7 +60,8 @@ class Game:
         map_surface = pygame.transform.scale(
             pygame.image.load(map_path).convert(), size)
 
-        # == Poblacion inicial (coches creados UNA vez, luego se reutilizan) ==
+        # == Poblacion inicial ==
+        # Se creaun una vez y se reutilizan
         cars = [Car(x0, y0, angle=car_angle, image_path=image_path) for _ in range(POP)]
         for car in cars:
             car.reset(x0, y0, car_angle, Brain())
@@ -65,9 +72,11 @@ class Game:
 
         # == Bucle Principal ==
         while not self.exit:
-            for event in pygame.event.get():
+            for event in pygame.event.get():    
                 if event.type == pygame.QUIT:
                     self.exit = True
+
+                # == Teclas ==
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_UP:
                         steps_per_frame = min(steps_per_frame + 1, 30)
@@ -76,13 +85,15 @@ class Game:
                     elif event.key == pygame.K_d:
                         draw_enabled = not draw_enabled
 
-            # == Simulacion (uno o varios pasos por fotograma) ==
+            # == Simulacion ==
+            # Puede hacer varios por fotograma
             for _ in range(steps_per_frame):
                 for car in cars:
                     car.think_and_move(DT, walls, ppu)
                 frames += 1
 
                 # == Fin de generacion: todos muertos o se acabo el tiempo ==
+                # Damos paso a la siguiente generacion
                 if frames >= MAX_FRAMES or not any(c.alive for c in cars):
                     best = max(cars, key=lambda c: c.fitness)
                     print(f"Gen {generation}: mejor = {best.fitness:.1f}")
@@ -107,7 +118,7 @@ class Game:
                 self.screen.blit(map_surface, (0, 0))
                 if alive:
                     leader = max(alive, key=lambda c: c.fitness)
-                    for s in leader.sensors:      # sensores solo del mejor
+                    for s in leader.sensors:
                         s.draw(self.screen)
                     for car in alive:
                         car.draw(self.screen, ppu)

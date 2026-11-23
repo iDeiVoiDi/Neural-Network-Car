@@ -2,9 +2,13 @@
     "NAME": "Redes Neuronales - COCHE",
     "SCREEN_WIDTH": 1280,
     "SCREEN_HEIGHT": 720,
+
     "SCREEN_CAR_INIT_X": 3,
     "SCREEN_CAR_INIT_Y": 10,
     "CAR_INIT_ANGLE": 90,
+    
+    "CAR_POPULATION": 50,
+    "CAR_TIME_LIMIT": 20,
 
     "CAR_MAX_SPEED": 8.0,
     "CAR_ACELERATION": 25.0,

@@ -1,18 +1,22 @@
-
+#==================================================
+# AI.BRAIN | Red Neuronal 7→64→32→1
+#==================================================
 import numpy as np
-
 
 class Brain:
 
     def __init__(self):
-        # Pesos inicializados con He
-        self.W1 = np.random.randn(7, 64).astype(np.float32) * np.sqrt(2 / 7)
-        self.b1 = np.zeros((1, 64), dtype=np.float32)
 
-        self.W2 = np.random.randn(64, 32).astype(np.float32) * np.sqrt(2 / 64)
-        self.b2 = np.zeros((1, 32), dtype=np.float32)
+        H1 = 64
+        H2 = 32
+        
+        self.W1 = np.random.randn(7, H1).astype(np.float32) * np.sqrt(2 / 7)
+        self.b1 = np.zeros((1, H1), dtype=np.float32)
 
-        self.W3 = np.random.randn(32, 1).astype(np.float32) * np.sqrt(2 / 32)
+        self.W2 = np.random.randn(H1, H2).astype(np.float32) * np.sqrt(2 / H1)
+        self.b2 = np.zeros((1, H2), dtype=np.float32)
+
+        self.W3 = np.random.randn(H2, 1).astype(np.float32) * np.sqrt(2 / H2)
         self.b3 = np.zeros((1, 1), dtype=np.float32)
 
     def forward(self, inputs):
